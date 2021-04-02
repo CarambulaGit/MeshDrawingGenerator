@@ -1,0 +1,11 @@
+﻿# Default ignored files
+/shelf/
+/workspace.xml
+# Rider ignored files
+/projectSettingsUpdater.xml
+/modules.xml
+/.idea.Drawer.iml
+/contentModel.xml
+# Datasource local storage ignored files
+/../../../../../../:\Unity\Drawer\.idea\.idea.Drawer\.idea/dataSources/
+/dataSources.local.xml
