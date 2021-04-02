@@ -7,7 +7,8 @@ public class DrawerOnUIController : MonoBehaviour {
     private LineRenderer lineRenderer;
     private RectTransform drawAreaTransform;
     [SerializeField] private Camera camera;
-    [SerializeField] private MeshGenerator2D meshGenerator2D;
+    [SerializeField] private MeshGenerator2D meshGenerator2D; // todo interface
+    [SerializeField] private MeshGenerator3D meshGenerator3D; 
 
     public delegate void FigureDrawn();
 
@@ -17,8 +18,11 @@ public class DrawerOnUIController : MonoBehaviour {
         camera = camera ?? Camera.main;
         lineRenderer = drawArea.GetLineRenderer();
         drawAreaTransform = drawArea.GetRectTransform();
-        if (meshGenerator2D != null) {
-            FigureDrawnEvent += meshGenerator2D.OnDrawnFigure;
+        // if (meshGenerator2D != null) {
+            // FigureDrawnEvent += meshGenerator2D.OnDrawnFigure;
+        // }
+        if (meshGenerator3D != null) {
+            FigureDrawnEvent += meshGenerator3D.OnDrawnFigure;
         }
     }
 
