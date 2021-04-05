@@ -18,6 +18,8 @@ public class MeshGenerator3D : MonoBehaviour {
     private int[] triangles;
     private Mesh mesh;
     private MeshFilter meshFilter;
+    private List<Vector3[]> points1 = new List<Vector3[]>();
+    private int curPointInd = 0;
 
     private void Awake() {
         meshFilter = GetComponent<MeshFilter>();
@@ -35,6 +37,23 @@ public class MeshGenerator3D : MonoBehaviour {
             new Vector3(0, 0, -offsetZ),
             new Vector3(0, 0, offsetZ)
         };
+        
+        points1.Add(new[] { Vector3.zero, Vector3.right});
+        points1.Add(new[] { Vector3.zero, Vector3.up});
+        points1.Add(new[] { Vector3.zero, Vector3.left});
+        points1.Add(new[] { Vector3.zero, Vector3.down});
+        
+        points1.Add(new[] { Vector3.zero, Vector3.right + Vector3.up});
+        points1.Add(new[] { Vector3.zero, Vector3.left + Vector3.up});
+        points1.Add(new[] { Vector3.zero, Vector3.left + Vector3.down});
+        points1.Add(new[] { Vector3.zero, Vector3.right + Vector3.down});
+    }
+
+    private void Update() {
+        
+        if (Input.GetKeyDown(KeyCode.A)) {
+            GenerateMesh(points1[curPointInd++]);
+        }
     }
 
     public void OnDrawnFigure() {
@@ -52,81 +71,69 @@ public class MeshGenerator3D : MonoBehaviour {
         var setPoints = new HashSet<Vector3>();
         setPoints.UnionWith(points);
         points = setPoints.ToArray();
+        // todo if only 1 point left make quad
         mesh = new Mesh();
         meshFilter.mesh = mesh;
+        var diffs = FindDiffs(points);
 
-        // vertices = GenerateVerticesForPlane(points);
-        // triangles = GenerateTrianglesForPlane(vertices, points);
+        GeneratePlane(diffs, points, out var planeVertices, out var planeTriangles);
+        GetTwoOppositeDirPlanes(planeVertices, planeTriangles, out vertices, out var twoPlanesTriangles);
+        FillGapBetweenPlanes(diffs, twoPlanesTriangles, vertices, out var trianglesOfPipe);
+        GenerateTriangleForSidesCubsOnPoints(trianglesOfPipe, vertices.Length, out triangles);
+
+
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+
+        // mesh.RecalculateNormals();
+    }
+
+    private Vector3[] FindDiffs(Vector3[] points) {
         var diffs = new Vector3[points.Length - 1];
         for (var i = 0; i < diffs.Length; i++) {
             diffs[i] = points[i + 1] - points[i];
         }
 
-        GeneratePlane(diffs, points, out var planeVertices, out var planeTriangles);
-        GetTwoOppositeDirPlanes(planeVertices, planeTriangles, out var twoPlanesVertices, out var twoPlanesTriangles);
-        FillGapBetweenPlanes(diffs, twoPlanesVertices, twoPlanesTriangles, out vertices, out triangles);
-
-        var triangles2 = new int[triangles.Length + 12];
-        Array.Copy(triangles, triangles2, triangles.Length);
-        var halfVerLen = vertices.Length / 2;
-        
-        if (diffs[0].x >= 0) {
-            triangles2[triangles.Length] = halfVerLen;
-            triangles2[triangles.Length + 1] = triangles2[triangles.Length + 4] = halfVerLen + 1;
-            triangles2[triangles.Length + 2] = triangles2[triangles.Length + 3] = 0;
-            triangles2[triangles.Length + 5] = 1;
-        }
-        else {
-            triangles2[triangles.Length] = 2;
-            triangles2[triangles.Length + 1] = triangles2[triangles.Length + 4] = halfVerLen + 2;
-            triangles2[triangles.Length + 2] = triangles2[triangles.Length + 3] = 3;
-            triangles2[triangles.Length + 5] = halfVerLen + 3;
-        }
-
-        if (diffs[diffs.Length - 1].x >= 0) {
-            triangles2[triangles.Length + 6] = halfVerLen - 1;
-            triangles2[triangles.Length + 7] = triangles2[triangles.Length + 10] = halfVerLen - 2;
-            triangles2[triangles.Length + 8] = triangles2[triangles.Length + 9] = halfVerLen + halfVerLen - 1;
-            triangles2[triangles.Length + 11] = halfVerLen + halfVerLen - 2;
-        }
-        else {
-            triangles2[triangles.Length + 6] = halfVerLen - 4;
-            triangles2[triangles.Length + 7] = triangles2[triangles.Length + 10] = halfVerLen + halfVerLen - 4;
-            triangles2[triangles.Length + 8] = triangles2[triangles.Length + 9] = halfVerLen - 3;
-            triangles2[triangles.Length + 11] = halfVerLen + halfVerLen - 3;
-        }
-
-
-
-
-        // triangles2[triangles.Length] = halfVerLen;
-        // triangles2[triangles.Length + 1] = triangles2[triangles.Length + 4] = halfVerLen + 1;
-        // triangles2[triangles.Length + 2] = triangles2[triangles.Length + 3] = 0;
-        // triangles2[triangles.Length + 5] = 1;
-        // triangles2[triangles.Length + 6] = halfVerLen - 1;
-        // triangles2[triangles.Length + 7] = triangles2[triangles.Length + 10] = halfVerLen + halfVerLen - 1;
-        // triangles2[triangles.Length + 8] = triangles2[triangles.Length + 9] = halfVerLen - 2;
-        // triangles2[triangles.Length + 11] = halfVerLen + halfVerLen - 2;
-
-        // triangles2[triangles.Length] = halfVerLen;
-        // triangles2[triangles.Length + 1] = triangles2[triangles.Length + 4] = 0;
-        // triangles2[triangles.Length + 2] = triangles2[triangles.Length + 3] = halfVerLen + 1;
-        // triangles2[triangles.Length + 5] = 1;
-        // triangles2[triangles.Length + 6] = halfVerLen - 1;
-        // triangles2[triangles.Length + 7] = triangles2[triangles.Length + 10] = halfVerLen + halfVerLen - 1;
-        // triangles2[triangles.Length + 8] = triangles2[triangles.Length + 9] = halfVerLen - 2;
-        // triangles2[triangles.Length + 11] = halfVerLen + halfVerLen - 2;
-
-        mesh.vertices = vertices;
-        // mesh.triangles = triangles;
-        mesh.triangles = triangles2;
-        // mesh.RecalculateNormals();
+        return diffs;
     }
 
-    private void FillGapBetweenPlanes(Vector3[] diffs, Vector3[] twoPlanesVertices, int[] twoPlanesTriangles,
-        out Vector3[] vertices, out int[] triangles) {
-        vertices = twoPlanesVertices;
-        triangles = new int[twoPlanesTriangles.Length + (twoPlanesVertices.Length / 2 - 2) * 6];
+    private void GenerateTriangleForSidesCubsOnPoints(int[] trianglesOfPipe,
+        int verticesLen, out int[] triangles) {
+        triangles = new int[trianglesOfPipe.Length + 3 * verticesLen / 2];
+        Array.Copy(trianglesOfPipe, triangles, trianglesOfPipe.Length);
+        var halfVerLen = verticesLen / 2;
+        for (int ti = trianglesOfPipe.Length, vi = 0; ti < triangles.Length; ti += 12, vi += 4) {
+            // left side
+            triangles[ti] = vi + halfVerLen;
+            triangles[ti + 1] = triangles[ti + 4] = vi + halfVerLen + 1;
+            triangles[ti + 2] = triangles[ti + 3] = vi;
+            triangles[ti + 5] = vi + 1;
+            
+            // right side
+            triangles[ti + 6] = vi + 2;
+            triangles[ti + 7] = triangles[ti + 10] = vi + halfVerLen + 2;
+            triangles[ti + 8] = triangles[ti + 9] = vi + 3;
+            triangles[ti + 11] = vi + halfVerLen + 3;
+
+            // if (diffs[diffs.Length - 1].x >= 0) {
+            //     triangles[trianglesOfPipe.Length + 6] = halfVerLen - 1;
+            //     triangles[trianglesOfPipe.Length + 7] = triangles[trianglesOfPipe.Length + 10] = halfVerLen - 2;
+            //     triangles[trianglesOfPipe.Length + 8] = triangles[trianglesOfPipe.Length + 9] = halfVerLen + halfVerLen - 1;
+            //     triangles[trianglesOfPipe.Length + 11] = halfVerLen + halfVerLen - 2;
+            // }
+            // else {
+            //     triangles[trianglesOfPipe.Length + 6] = halfVerLen - 4;
+            //     triangles[trianglesOfPipe.Length + 7] = triangles[trianglesOfPipe.Length + 10] = halfVerLen + halfVerLen - 4;
+            //     triangles[trianglesOfPipe.Length + 8] = triangles[trianglesOfPipe.Length + 9] = halfVerLen - 3;
+            //     triangles[trianglesOfPipe.Length + 11] = halfVerLen + halfVerLen - 3;
+            // }
+        }
+    }
+
+
+    private void FillGapBetweenPlanes(Vector3[] diffs, int[] twoPlanesTriangles,
+        Vector3[] vertices, out int[] triangles) {
+        triangles = new int[twoPlanesTriangles.Length + (vertices.Length / 2 - 2) * 6];
         Array.Copy(twoPlanesTriangles, triangles, twoPlanesTriangles.Length);
         var halfOfVerLen = vertices.Length / 2;
         GenerateTrianglesOnQuadsBetweenPlanes(halfOfVerLen, ref triangles);
@@ -159,40 +166,6 @@ public class MeshGenerator3D : MonoBehaviour {
     private void GenerateTrianglesOnGapsBetweenPlanes(Vector3[] diffs, int halfOfVerLen, ref int[] triangles) {
         GenerateTrianglesOnUpperGapsBetweenPlanes(diffs, halfOfVerLen, ref triangles);
         GenerateTrianglesOnLowerGapsBetweenPlanes(diffs, halfOfVerLen, ref triangles);
-    }
-
-    private void GenerateTrianglesOnUpperGapsBetweenPlanesOld(Vector3[] diffs, int halfOfVerLen, ref int[] triangles) {
-        for (int vi = 0, ti = triangles.Length / 2 + 6, di = 0; vi < halfOfVerLen - 4; vi += 4, ti += 12, di++) {
-            if (diffs[di].x >= 0) {
-                triangles[ti] = vi + 2;
-                triangles[ti + 1] = triangles[ti + 4] = vi + 2 + halfOfVerLen;
-                triangles[ti + 2] = triangles[ti + 3] = vi + 5;
-                triangles[ti + 5] = vi + 5 + halfOfVerLen;
-            }
-            else {
-                triangles[ti] = vi + 2;
-                triangles[ti + 1] = triangles[ti + 4] = vi + 5;
-                triangles[ti + 2] = triangles[ti + 3] = vi + 2 + halfOfVerLen;
-                triangles[ti + 5] = vi + 5 + halfOfVerLen;
-            }
-        }
-    }
-
-    private void GenerateTrianglesOnLowerGapsBetweenPlanesOld(Vector3[] diffs, int halfOfVerLen, ref int[] triangles) {
-        for (int vi = 0, ti = 3 * triangles.Length / 4 + 6, di = 0; vi < halfOfVerLen - 4; vi += 4, ti += 12, di++) {
-            if (diffs[di].x < 0) {
-                triangles[ti] = vi + 3;
-                triangles[ti + 1] = triangles[ti + 4] = vi + 3 + halfOfVerLen;
-                triangles[ti + 2] = triangles[ti + 3] = vi + 4;
-                triangles[ti + 5] = vi + 4 + halfOfVerLen;
-            }
-            else {
-                triangles[ti] = vi + 3;
-                triangles[ti + 1] = triangles[ti + 4] = vi + 4;
-                triangles[ti + 2] = triangles[ti + 3] = vi + 3 + halfOfVerLen;
-                triangles[ti + 5] = vi + 4 + halfOfVerLen;
-            }
-        }
     }
 
     private void GenerateTrianglesOnUpperGapsBetweenPlanes(Vector3[] diffs, int halfOfVerLen, ref int[] triangles) {
@@ -230,31 +203,31 @@ public class MeshGenerator3D : MonoBehaviour {
 
     private void GenerateTrianglesOnLowerGapsBetweenPlanes(Vector3[] diffs, int halfOfVerLen, ref int[] triangles) {
         for (int vi = 0, ti = 3 * triangles.Length / 4 + 6, di = 0; vi < halfOfVerLen - 4; vi += 4, ti += 12, di++) {
-            if (diffs[di].x < 0) {
+            if (diffs[di].x >= 0) {
                 if (diffs[di].y > 0) {
                     triangles[ti] = vi + 3;
-                    triangles[ti + 1] = triangles[ti + 4] = vi + 3 + halfOfVerLen;
-                    triangles[ti + 2] = triangles[ti + 3] = vi + 7;
+                    triangles[ti + 1] = triangles[ti + 4] = vi + 7;
+                    triangles[ti + 2] = triangles[ti + 3] = vi + 3 + halfOfVerLen;
                     triangles[ti + 5] = vi + 7 + halfOfVerLen;
                 }
                 else {
                     triangles[ti] = vi;
-                    triangles[ti + 1] = triangles[ti + 4] = vi + halfOfVerLen;
-                    triangles[ti + 2] = triangles[ti + 3] = vi + 4;
+                    triangles[ti + 1] = triangles[ti + 4] = vi + 4;
+                    triangles[ti + 2] = triangles[ti + 3] = vi + halfOfVerLen;
                     triangles[ti + 5] = vi + 4 + halfOfVerLen;
                 }
             }
             else {
                 if (diffs[di].y > 0) {
                     triangles[ti] = vi;
-                    triangles[ti + 1] = triangles[ti + 4] = vi + 4;
-                    triangles[ti + 2] = triangles[ti + 3] = vi + halfOfVerLen;
+                    triangles[ti + 1] = triangles[ti + 4] = vi + halfOfVerLen;
+                    triangles[ti + 2] = triangles[ti + 3] = vi + 4;
                     triangles[ti + 5] = vi + 4 + halfOfVerLen;
                 }
                 else {
                     triangles[ti] = vi + 3;
-                    triangles[ti + 1] = triangles[ti + 4] = vi + 7;
-                    triangles[ti + 2] = triangles[ti + 3] = vi + 3 + halfOfVerLen;
+                    triangles[ti + 1] = triangles[ti + 4] = vi + 3 + halfOfVerLen;
+                    triangles[ti + 2] = triangles[ti + 3] = vi + 7;
                     triangles[ti + 5] = vi + 7 + halfOfVerLen;
                 }
             }
